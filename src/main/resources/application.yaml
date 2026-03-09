@@ -1,0 +1,66 @@
+spring:
+  # ─────────────────────────────────────────────────────
+  # DataSource
+  # NOTE: Use DB_USERNAME (not USERNAME — that's a reserved Windows env var)
+  # ─────────────────────────────────────────────────────
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${DB_USERNAME}
+    password: ${PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # MUST be false for Hibernate multi-tenancy schema-switching
+      auto-commit: false
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
+
+  # ─────────────────────────────────────────────────────
+  # Flyway — disabled here because we declare an explicit
+  # Flyway bean in PublicFlywayConfig (initMethod="migrate").
+  # Boot's FlywayAutoConfiguration backs off via
+  # @ConditionalOnMissingBean(Flyway.class).
+  # ─────────────────────────────────────────────────────
+  flyway:
+    enabled: false
+
+  # ─────────────────────────────────────────────────────
+  # JPA / Hibernate
+  # Multi-tenancy is wired via HibernateMultiTenancyConfig (Java config).
+  # DO NOT add hibernate.multiTenancy here — would conflict.
+  # ─────────────────────────────────────────────────────
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      # CRITICAL: Flyway owns all DDL — never let Hibernate touch schemas
+      ddl-auto: none
+    show-sql: true
+    # Must be false to prevent Hibernate Session leaking across threads
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        # Lets HikariCP manage autocommit state (auto-commit=false above)
+        connection.provider_disables_autocommit: true
+        connection.isolation: 2    # TRANSACTION_READ_COMMITTED
+#        default_schema: public
+
+# ─────────────────────────────────────────────────────
+# Logging
+# ─────────────────────────────────────────────────────
+logging:
+  level:
+    org.flywaydb: INFO
+    org.hibernate.SQL: DEBUG
+    com.security.rbac: DEBUG
+
+# ─────────────────────────────────────────────────────
+# Root Credentials
+# ─────────────────────────────────────────────────────
+root:
+  email: ${ROOT_EMAIL}
+  password: ${ROOT_PASSWORD}
+  name: ${ROOT_NAME}
+  username: ${ROOT_USERNAME}
