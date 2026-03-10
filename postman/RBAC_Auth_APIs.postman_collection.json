@@ -1,0 +1,148 @@
+{
+	"info": {
+		"_postman_id": "cbf729bc-db9a-4e2e-83ac-ff55a40b9983",
+		"name": "RBAC Auth APIs",
+		"description": "Collection for testing all RBAC login and authentication endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Root Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"identifier\": \"admin\",\n    \"password\": \"password\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/root/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"root",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CEO Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"identifier\": \"ceo_user\",\n    \"password\": \"password\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/ceo/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"ceo",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Tenant Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Tenant-ID",
+						"value": "{{tenantSchema}}",
+						"description": "The schema name for the tenant (required for regular user logins)",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"identifier\": \"tenant_user\",\n    \"password\": \"password\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Refresh Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/refresh",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"refresh"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "tenantSchema",
+			"value": "replace_with_client_schema_name"
+		},
+		{
+			"key": "refreshToken",
+			"value": "replace_with_refresh_token_string"
+		}
+	]
+}

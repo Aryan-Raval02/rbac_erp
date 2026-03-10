@@ -22,5 +22,7 @@ public interface GlobalUserRepository extends JpaRepository<GlobalUser, Long> {
 
     Optional<GlobalUser> findByUsername(String username);
 
+    Optional<GlobalUser> findByUsernameOrEmail(String username, String email);
+
     List<GlobalUser> findByTargetSchema(String targetSchema);
 }

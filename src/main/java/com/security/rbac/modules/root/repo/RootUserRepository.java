@@ -23,4 +23,6 @@ public interface RootUserRepository extends JpaRepository<RootUser, Long> {
     Optional<RootUser> findByEmail(String email);
 
     Optional<RootUser> findByUsername(String username);
+
+    Optional<RootUser> findByUsernameOrEmail(String username, String email);
 }
