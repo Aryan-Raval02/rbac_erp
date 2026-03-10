@@ -20,6 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Set;
 import com.security.rbac.modules.auth.service.AuthorityLoaderService;
+import com.security.rbac.modules.auth.service.TokenBlacklistService;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import com.security.rbac.exception.InvalidTokenException;
 import com.security.rbac.exception.TenantMismatchException;
@@ -32,6 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final AuthorityLoaderService authorityLoaderService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
@@ -53,10 +55,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         try {
-            // 2. Extract username & validate token (throws exception if expired/invalid)
+            // 2. Query the token blacklist before processing anything
+            if (tokenBlacklistService.isBlacklisted(jwt)) {
+                log.warn("Attempted to use a blacklisted token");
+                handlerExceptionResolver.resolveException(request, response, null,
+                        new InvalidTokenException("Token has been revoked"));
+                return;
+            }
+
+            // 3. Extract username & validate token (throws exception if expired/invalid)
             username = jwtService.extractUsername(jwt);
 
-            // 3. Process authentication if it hasn't been done yet
+            // 4. Process authentication if it hasn't been done yet
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 if (jwtService.isTokenValid(jwt)) {
@@ -67,7 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     String tenantSchema = claims.get("tenantSchema", String.class);
                     Long userId = claims.get("userId", Long.class);
 
-                    // 4a. Cross-tenant spoofing protection
+                    // 5a. Cross-tenant spoofing protection
                     String headerTenant = request.getHeader("X-Tenant-ID");
                     if (tenantSchema != null && !tenantSchema.trim().isEmpty() && headerTenant != null
                             && !headerTenant.trim().isEmpty()) {
@@ -80,7 +90,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         }
                     }
 
-                    // 4b. Set TenantContext immediately (vital for downstream data access)
+                    // 5b. Set TenantContext immediately (vital for downstream data access)
                     if (tenantSchema != null && !tenantSchema.trim().isEmpty()) {
                         TenantContext.setCurrentTenant(tenantSchema);
                         log.debug("TenantContext set to: {}", tenantSchema);
@@ -89,7 +99,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         log.debug("TenantContext set to public for ROOT");
                     }
 
-                    // 5. Build Principal and Authorities
+                    // 6. Build Principal and Authorities
                     Set<GrantedAuthority> authorities = authorityLoaderService.loadAuthorities(
                             userType, userId, tenantSchema, role);
 
@@ -103,7 +113,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             .authorities(authorities)
                             .build();
 
-                    // 6. Create authToken using custom Principal
+                    // 7. Create authToken using custom Principal
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             principal,
                             null, // No credentials needed for JWT principal
@@ -112,7 +122,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     // Embed extra HTTP request details
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // 7. Save to SecurityContext
+                    // 8. Save to SecurityContext
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
@@ -127,11 +137,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 8. Continue filter chain
+        // 9. Continue filter chain
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // 9. CLEANUP - Prevent memory leaks and token poisoning in thread pool
+            // 10. CLEANUP - Prevent memory leaks and token poisoning in thread pool
             TenantContext.clear();
             SecurityContextHolder.clearContext();
         }
