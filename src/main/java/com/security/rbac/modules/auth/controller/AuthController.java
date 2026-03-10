@@ -16,6 +16,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import com.security.rbac.modules.auth.service.TokenBlacklistService;
+import com.security.rbac.utility.ResponseBuilder;
+import com.security.rbac.utility.ResponseStructure;
+import org.springframework.http.HttpStatus;
+
 import java.util.Map;
 
 @RestController
@@ -28,6 +34,7 @@ public class AuthController {
     private final CeoAuthService ceoAuthService;
     private final TenantAuthService tenantAuthService;
     private final RefreshTokenService refreshTokenService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Operation(summary = "Login for Root/Platform Admins")
     @PostMapping("/root/login")
@@ -65,15 +72,26 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Universal Logout (invalidates the current JWT)")
+    @PostMapping("/logout")
+    public ResponseEntity<ResponseStructure<String>> logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String jwt = authHeader.substring(7);
+            tokenBlacklistService.blacklistToken(jwt);
+        }
+        return ResponseBuilder.success(HttpStatus.OK, "Logged out successfully", (String) null);
+    }
+
     @PreAuthorize("hasAuthority('BRANCH_MANAGEMENT_READ') or hasRole('CEO')")
     @GetMapping("/check/permission/branch")
-    public ResponseEntity<String> branchReadAccess(){
+    public ResponseEntity<String> branchReadAccess() {
         return ResponseEntity.ok("Accessed");
     }
 
     @PreAuthorize("hasAuthority('PRODUCT_MANAGEMENT_READ') or hasRole('CEO')")
     @GetMapping("/check/permission/product")
-    public ResponseEntity<String> productReadAccess(){
+    public ResponseEntity<String> productReadAccess() {
         return ResponseEntity.ok("Accessed");
     }
 
@@ -81,8 +99,7 @@ public class AuthController {
     public Object me(Authentication authentication) {
         return Map.of(
                 "name", authentication.getName(),
-                "authorities", authentication.getAuthorities()
-        );
+                "authorities", authentication.getAuthorities());
     }
 
 }
