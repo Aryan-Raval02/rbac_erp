@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST controller for tenant-scoped user management.
@@ -62,6 +63,7 @@ public class UserController {
      * Response {@code 201 Created} — includes user details (password excluded).
      */
     @PostMapping
+    @PreAuthorize("hasAuthority('USER_ADD') or hasRole('CEO')")
     public ResponseEntity<ResponseStructure<UserResponse>> createUser(
             @Valid @RequestBody CreateUserRequest request) {
 

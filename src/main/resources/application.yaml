@@ -64,3 +64,12 @@ root:
   password: ${ROOT_PASSWORD}
   name: ${ROOT_NAME}
   username: ${ROOT_USERNAME}
+
+# ─────────────────────────────────────────────────────
+# Jwt Insides
+# ─────────────────────────────────────────────────────
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS}

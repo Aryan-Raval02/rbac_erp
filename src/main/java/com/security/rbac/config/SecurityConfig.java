@@ -11,6 +11,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+import org.springframework.security.access.PermissionEvaluator;
+import com.security.rbac.security.RbacPermissionEvaluator;
+import com.security.rbac.modules.module.repo.ModuleRepository;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 /**
  * Spring Security configuration — stateless, JWT-ready.
@@ -47,28 +54,93 @@ public class SecurityConfig {
                 return new BCryptPasswordEncoder();
         }
 
+        /**
+         * Registers our custom PermissionEvaluator
+         * for @PreAuthorize("hasPermission(...)").
+         */
+        @Bean
+        public PermissionEvaluator permissionEvaluator(ModuleRepository moduleRepository) {
+                return new RbacPermissionEvaluator(moduleRepository);
+        }
+
+        /**
+         * Configures the expression handler to use our custom PermissionEvaluator.
+         * Must be static to avoid initialization order issues
+         * with @EnableMethodSecurity.
+         */
+        @Bean
+        static MethodSecurityExpressionHandler methodSecurityExpressionHandler(
+                        PermissionEvaluator permissionEvaluator) {
+                DefaultMethodSecurityExpressionHandler expressionHandler = new DefaultMethodSecurityExpressionHandler();
+                expressionHandler.setPermissionEvaluator(permissionEvaluator);
+                return expressionHandler;
+        }
+
+        /**
+         * Disables the default Spring Boot Security auto-configured user
+         * (the one that generates a random password in the console on startup)
+         * because we use custom auth services and JWT instead.
+         */
+        @Bean
+        public UserDetailsService userDetailsService() {
+                return username -> {
+                        throw new UsernameNotFoundException(
+                                        "Default UserDetailsService is disabled. Custom JWT authentication in use.");
+                };
+        }
+
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                        TenantResolverFilter tenantResolverFilter)
+                        TenantResolverFilter tenantResolverFilter,
+                        com.security.rbac.jwt.JwtAuthFilter jwtAuthFilter)
                         throws Exception {
+
                 http
+                                // Disable CSRF because this application uses stateless JWT authentication
+                                // CSRF protection is mainly required for session-based browser authentication
                                 .csrf(AbstractHttpConfigurer::disable)
+
+                                // Configure stateless session management
+                                // Spring Security will not create or use HttpSession
+                                // Every request must carry JWT token explicitly
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                                // Configure endpoint authorization rules
                                 .authorizeHttpRequests(auth -> auth
-                                                // ── Public endpoints ──────────────────────────────────────────
+
+                                                // Public endpoints accessible without authentication
                                                 .requestMatchers(
-                                                                "/api/v1/**", // tenant onboarding (restrict to
-                                                                                   // SUPER_ADMIN in prod)
+                                                                "/api/v1/auth/root/login", // Root user login
+                                                                "/api/v1/auth/ceo/login", // CEO login
+                                                                "/api/v1/auth/login", // Tenant user login
+                                                                "/api/v1/auth/refresh", // Refresh token endpoint
+                                                                "/api/v1/auth/signup", // CEO tenant registration/signup
+                                                                "/api/v1/auth/me",
+
+                                                                // Swagger/OpenAPI documentation endpoints
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html",
                                                                 "/v3/api-docs/**",
+
+                                                                // Health check endpoint
                                                                 "/actuator/health")
                                                 .permitAll()
-                                                // ── Everything else requires authentication ────────────────────
+
+                                                // All remaining endpoints require authenticated JWT token
                                                 .anyRequest().authenticated())
-                                // Register TenantResolverFilter before Spring Security's auth filter
-                                // so TenantContext is populated before any security decision is made.
-                                .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class);
+
+                                // Filter 1: Resolve tenant before JWT authentication
+                                // Reads X-Tenant-ID header and stores schema in TenantContext
+                                .addFilterBefore(
+                                                tenantResolverFilter,
+                                                UsernamePasswordAuthenticationFilter.class)
+
+                                // Filter 2: JWT authentication filter executes after tenant resolution
+                                // Validates token, extracts claims, sets SecurityContext,
+                                // and overrides TenantContext using token tenant claim when required
+                                .addFilterAfter(
+                                                jwtAuthFilter,
+                                                TenantResolverFilter.class);
 
                 return http.build();
         }
