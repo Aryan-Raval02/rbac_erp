@@ -167,12 +167,33 @@ public class TenantService {
             Role role = roleRepository.findByName("CEO")
                     .orElseThrow(() -> new RoleNotFoundException("CEO role not found in tenant schema."));
 
+            String fullName = gu.getFullName() != null ? gu.getFullName().trim() : "";
+            int spaceIdx = fullName.indexOf(" ");
+            String firstName = spaceIdx > 0 ? fullName.substring(0, spaceIdx) : (fullName.isEmpty() ? "CEO" : fullName);
+            String lastName = spaceIdx > 0 ? fullName.substring(spaceIdx + 1) : "User";
+
             User user = User.builder()
+                    .empId("CEO-" + gu.getId())
+                    .firstName(firstName)
+                    .lastName(lastName)
                     .email(gu.getEmail())
-                    .fullName(gu.getFullName())
                     .username(gu.getUsername())
                     .passwordHash(gu.getPasswordHash())
-                    .phoneNumber(gu.getPhoneNumber())
+                    .contactNumber(gu.getPhoneNumber() != null ? gu.getPhoneNumber() : "0000000000")
+                    .department("Management")
+                    .designation("CEO")
+                    .employmentType("Full-Time")
+                    .dateOfJoining(java.time.LocalDate.now())
+                    .currentAddressLine1("Not Provided")
+                    .currentCity("Not Provided")
+                    .currentState("Not Provided")
+                    .currentCountry("Not Provided")
+                    .currentPincode("000000")
+                    .permanentAddressLine1("Not Provided")
+                    .permanentCity("Not Provided")
+                    .permanentState("Not Provided")
+                    .permanentCountry("Not Provided")
+                    .permanentPincode("000000")
                     .isActive(true)
                     .role(role)
                     .build();

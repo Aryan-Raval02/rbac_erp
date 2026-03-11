@@ -26,24 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Tenant-scoped user service.
- *
- * <p>
- * All DB operations automatically target the tenant schema because
- * Hibernate resolves the {@code search_path} from {@code TenantContext}
- * (set by {@code TenantResolverFilter} per request) — no explicit schema
- * switching needed here.
- *
- * <h2>Create-User Flow</h2>
- * <ol>
- * <li>Guard duplicate email / username within the tenant</li>
- * <li>Validate the assigned role exists in the tenant</li>
- * <li>BCrypt-hash the password and persist the user</li>
- * <li>If permissions are supplied, persist them via
- * {@link #savePermissions}</li>
- * </ol>
- */
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -57,15 +39,11 @@ public class UserServiceImpl implements UserService {
         private final UserPermissionRepository userPermissionRepository;
         private final PasswordEncoder passwordEncoder;
 
-        // ═════════════════════════════════════════════════════════════════════════
-        // Public API
-        // ═════════════════════════════════════════════════════════════════════════
-
         @Override
         @Transactional
         public UserResponse createUser(CreateUserRequest request) {
 
-                // ── 1. Duplicate guards ───────────────────────────────────────────────
+                // Duplicate guards
                 if (userRepository.existsByEmail(request.email())) {
                         throw new UserAlreadyExistsException(
                                         "Email '" + request.email() + "' is already in use in this tenant.");
@@ -74,32 +52,64 @@ public class UserServiceImpl implements UserService {
                         throw new UserAlreadyExistsException(
                                         "Username '" + request.username() + "' is already taken in this tenant.");
                 }
+                if (userRepository.existsByEmpId(request.empId())) {
+                        throw new UserAlreadyExistsException(
+                                        "Employee ID '" + request.empId() + "' is already taken in this tenant.");
+                }
 
-                // ── 2. Validate role ──────────────────────────────────────────────────
+                // Validate role
                 Role role = roleRepository.findById(request.roleId())
                                 .orElseThrow(() -> new RoleNotFoundException(
                                                 "Role not found with id: " + request.roleId()));
 
-                // ── 3. Persist user ───────────────────────────────────────────────────
+                User reportingManager = null;
+                if (request.reportingManagerId() != null) {
+                        reportingManager = userRepository.findById(request.reportingManagerId())
+                                        .orElseThrow(() -> new IllegalArgumentException(
+                                                        "Reporting Manager not found with id: "
+                                                                        + request.reportingManagerId()));
+                }
+
+                // Persist user
                 User user = User.builder()
-                                .fullName(request.fullName())
+                                .empId(request.empId())
+                                .firstName(request.firstName())
+                                .lastName(request.lastName())
                                 .email(request.email())
                                 .username(request.username())
                                 .passwordHash(passwordEncoder.encode(request.password()))
-                                .phoneNumber(request.phoneNumber())
+                                .contactNumber(request.contactNumber())
+                                .alternateNumber(request.alternateNumber())
+                                .department(request.department())
+                                .designation(request.designation())
                                 .role(role)
+                                .reportingManager(reportingManager)
+                                .employmentType(request.employmentType())
+                                .dateOfJoining(request.dateOfJoining())
+                                .status(request.status() != null ? request.status() : "ACTIVE")
                                 .isActive(true)
+                                .currentAddressLine1(request.currentAddressLine1())
+                                .currentAddressLine2(request.currentAddressLine2())
+                                .currentCity(request.currentCity())
+                                .currentState(request.currentState())
+                                .currentCountry(request.currentCountry())
+                                .currentPincode(request.currentPincode())
+                                .permanentAddressLine1(request.permanentAddressLine1())
+                                .permanentAddressLine2(request.permanentAddressLine2())
+                                .permanentCity(request.permanentCity())
+                                .permanentState(request.permanentState())
+                                .permanentCountry(request.permanentCountry())
+                                .permanentPincode(request.permanentPincode())
                                 .build();
 
                 User saved = userRepository.save(user);
-                log.info("User created — id={}, email='{}', role='{}'",
-                                saved.getId(), saved.getEmail(), role.getName());
+                log.info("User created — id={}, email='{}', role='{}'", saved.getId(), saved.getEmail(),
+                                role.getName());
 
-                // ── 4. Persist permissions (if provided) ──────────────────────────────
+                // Persist permissions (if provided)
                 List<CreateUserRequest.PermissionRequest> permissions = request.permissions() != null
                                 ? request.permissions()
                                 : Collections.emptyList();
-
                 if (!permissions.isEmpty()) {
                         savePermissions(saved, permissions);
                 }
@@ -107,47 +117,27 @@ public class UserServiceImpl implements UserService {
                 return toResponse(saved);
         }
 
-        // ═════════════════════════════════════════════════════════════════════════
-        // Private helpers
-        // ═════════════════════════════════════════════════════════════════════════
-
-        /**
-         * Persists user-level permission overrides into {@code user_permissions}.
-         *
-         * <p>
-         * Skips duplicates silently (idempotent) — guards against the unique
-         * constraint {@code uk_up_user_module_action} on (user_id, module_id,
-         * action_id).
-         *
-         * @param user        the newly created user
-         * @param permissions list of module+action pairs from the request
-         */
-        private void savePermissions(User user,
-                        List<CreateUserRequest.PermissionRequest> permissions) {
+        private void savePermissions(User user, List<CreateUserRequest.PermissionRequest> permissions) {
                 int saved = 0;
                 int skipped = 0;
 
                 for (CreateUserRequest.PermissionRequest perm : permissions) {
-
-                        // Validate module
                         Module module = moduleRepository.findById(perm.moduleId())
                                         .orElseThrow(() -> new ModuleNotFoundException(
                                                         "Module not found with id: " + perm.moduleId()));
 
-                        // Validate action
                         Action action = actionRepository.findById(perm.actionId())
                                         .orElseThrow(() -> new ActionNotFoundException(
                                                         "Action not found with id: " + perm.actionId()));
 
-                        // Skip if already exists (idempotent guard)
                         boolean exists = userPermissionRepository
                                         .findByUserIdAndModuleIdAndActionId(user.getId(), module.getId(),
                                                         action.getId())
                                         .isPresent();
 
                         if (exists) {
-                                log.debug("UserPermission exists — skipping user={} module={} action={}",
-                                                user.getId(), module.getId(), action.getId());
+                                log.debug("UserPermission exists — skipping user={} module={} action={}", user.getId(),
+                                                module.getId(), action.getId());
                                 skipped++;
                                 continue;
                         }
@@ -165,20 +155,37 @@ public class UserServiceImpl implements UserService {
                 log.info("Permissions saved={} skipped={} for user id={}", saved, skipped, user.getId());
         }
 
-        /**
-         * Maps a {@link User} entity to a {@link UserResponse} DTO.
-         * Password is intentionally excluded.
-         */
         private UserResponse toResponse(User u) {
                 return new UserResponse(
                                 u.getId(),
-                                u.getFullName(),
+                                u.getEmpId(),
+                                u.getFirstName(),
+                                u.getLastName(),
                                 u.getEmail(),
                                 u.getUsername(),
-                                u.getPhoneNumber(),
+                                u.getContactNumber(),
+                                u.getAlternateNumber(),
+                                u.getDepartment(),
+                                u.getDesignation(),
                                 u.getRole().getId(),
                                 u.getRole().getName(),
+                                u.getReportingManager() != null ? u.getReportingManager().getId() : null,
+                                u.getEmploymentType(),
+                                u.getDateOfJoining(),
+                                u.getStatus(),
                                 u.getIsActive(),
+                                u.getCurrentAddressLine1(),
+                                u.getCurrentAddressLine2(),
+                                u.getCurrentCity(),
+                                u.getCurrentState(),
+                                u.getCurrentCountry(),
+                                u.getCurrentPincode(),
+                                u.getPermanentAddressLine1(),
+                                u.getPermanentAddressLine2(),
+                                u.getPermanentCity(),
+                                u.getPermanentState(),
+                                u.getPermanentCountry(),
+                                u.getPermanentPincode(),
                                 u.getCreatedAt());
         }
 }
