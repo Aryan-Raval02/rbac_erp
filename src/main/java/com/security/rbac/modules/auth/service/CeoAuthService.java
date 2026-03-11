@@ -6,13 +6,12 @@ import com.security.rbac.modules.auth.dto.request.LoginRequest;
 import com.security.rbac.modules.auth.dto.response.AuthResponse;
 import com.security.rbac.modules.ceo.entity.GlobalUser;
 import com.security.rbac.modules.ceo.repo.GlobalUserRepository;
-import com.security.rbac.exception.InactiveUserException;
-import com.security.rbac.exception.InvalidCredentialsException;
+import com.security.rbac.jwt.exception.InactiveUserException;
+import com.security.rbac.jwt.exception.InvalidCredentialsException;
 import com.security.rbac.modules.permissionQuery.service.PermissionQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;

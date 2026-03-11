@@ -1,5 +1,6 @@
-package com.security.rbac.exception;
+package com.security.rbac.multitenancy.exception;
 
+import com.security.rbac.exception.ApiBaseException;
 import org.springframework.http.HttpStatus;
 
 /**
