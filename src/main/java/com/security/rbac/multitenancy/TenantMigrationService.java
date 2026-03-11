@@ -236,6 +236,7 @@ public class TenantMigrationService {
                     .permanentCountry("Not Provided")
                     .permanentPincode("000000")
                     .isActive(true)
+
                     .role(role)
                     .build();
 

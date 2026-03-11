@@ -44,6 +44,9 @@ public class GlobalUser {
     @Column(name = "target_schema", length = 63)
     private String targetSchema;
 
+    @Column(name = "has_schema")
+    private Boolean hasSchema = false;
+
     /** Platform role — default CEO for sign-up registrations. */
     @Column(name = "system_role", length = 50)
     @Builder.Default

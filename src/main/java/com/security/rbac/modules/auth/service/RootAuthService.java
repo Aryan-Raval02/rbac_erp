@@ -62,7 +62,8 @@ public class RootAuthService {
                 rootUser.getUsername(),
                 rootUser.getId(),
                 rootUser.getRole().name(),
-                "public"
+                "public",
+                null
         );
     }
 }

@@ -4,6 +4,7 @@ import com.security.rbac.jwt.JwtProperties;
 import com.security.rbac.jwt.JwtService;
 import com.security.rbac.modules.auth.dto.request.LoginRequest;
 import com.security.rbac.modules.auth.dto.response.AuthResponse;
+import com.security.rbac.modules.permissionQuery.service.PermissionQueryService;
 import com.security.rbac.modules.user.entity.User;
 import com.security.rbac.modules.user.repo.UserRepository;
 import com.security.rbac.multitenancy.TenantContext;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -27,6 +29,7 @@ public class TenantAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
+    private final PermissionQueryService permissionQueryService;
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
@@ -65,7 +68,15 @@ public class TenantAuthService {
         String accessToken = jwtService.generateAccessToken(claims, tenantUser.getUsername());
         String refreshToken = jwtService.generateRefreshToken(claims, tenantUser.getUsername());
 
-        // 7. Return auth response
+        // 7. Load permissions for frontend
+        List<AuthResponse.PermissionModuleDto> permissions =
+                permissionQueryService.getGroupedPermissions(
+                        tenantUser.getId(),
+                        tenantUser.getUsername(),
+                        currentTenant
+                );
+
+        // 8. Return response
         return new AuthResponse(
                 accessToken,
                 refreshToken,
@@ -75,7 +86,8 @@ public class TenantAuthService {
                 tenantUser.getUsername(),
                 tenantUser.getId(),
                 tenantUser.getRole().getName(),
-                currentTenant
+                currentTenant,
+                permissions
         );
     }
 }

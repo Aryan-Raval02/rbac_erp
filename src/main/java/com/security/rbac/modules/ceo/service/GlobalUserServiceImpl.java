@@ -74,7 +74,6 @@ public class GlobalUserServiceImpl implements GlobalUserService {
     }
 
     // ── Private orchestration ─────────────────────────────────────────────────
-
     private SignUpResponse doSignUp(SignUpRequest request) {
 
         String schemaName = generateTenantSchemaName(request.companyName());
@@ -103,6 +102,7 @@ public class GlobalUserServiceImpl implements GlobalUserService {
                 .phoneNumber(request.phoneNumber())
                 .targetSchema(schemaName)
                 .systemRole("CEO")
+                .hasSchema(false)
                 .isActive(true)
                 .build();
 
@@ -111,6 +111,10 @@ public class GlobalUserServiceImpl implements GlobalUserService {
 
         // ── Create tenant schema + migrations ──────────────────────────────────
         tenantService.createTenantSubscription(schemaName, request.companyName());
+
+        saved.setHasSchema(true);
+        globalUserRepository.save(saved);
+        log.info("CEO user has schema ");
 
         return new SignUpResponse(
                 saved.getId(),

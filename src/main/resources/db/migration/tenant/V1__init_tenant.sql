@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS roles (
 CREATE TABLE IF NOT EXISTS modules (
     id          BIGSERIAL    PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
+    label       VARCHAR(255),
     description VARCHAR(255)
 );
 
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS modules (
 CREATE TABLE IF NOT EXISTS actions (
     id          BIGSERIAL    PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,   -- READ, WRITE, DELETE, EXECUTE …
+    label       VARCHAR(255),
     description VARCHAR(255)
 );
 
