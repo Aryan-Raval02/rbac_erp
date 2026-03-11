@@ -5,6 +5,7 @@ import com.security.rbac.jwt.JwtService;
 import com.security.rbac.modules.auth.dto.response.AuthResponse;
 import com.security.rbac.modules.ceo.entity.GlobalUser;
 import com.security.rbac.modules.ceo.repo.GlobalUserRepository;
+import com.security.rbac.modules.permissionQuery.service.PermissionQueryService;
 import com.security.rbac.modules.root.entity.RootUser;
 import com.security.rbac.modules.root.repo.RootUserRepository;
 import com.security.rbac.modules.user.entity.User;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -28,6 +30,7 @@ public class RefreshTokenService {
     private final RootUserRepository rootUserRepository;
     private final GlobalUserRepository globalUserRepository;
     private final UserRepository userRepository;
+    private final PermissionQueryService permissionQueryService;
 
     @Transactional
     public AuthResponse refreshToken(String refreshToken) {
@@ -48,14 +51,14 @@ public class RefreshTokenService {
 
         // 3. Process based on user type
         return switch (userType.toUpperCase()) {
-            case "ROOT" -> processRootRefresh(userId, username);
-            case "CEO" -> processCeoRefresh(userId, username, tenantSchema);
-            case "TENANT" -> processTenantRefresh(userId, username, tenantSchema);
+            case "ROOT" -> processRootRefresh(userId, username, refreshToken);
+            case "CEO" -> processCeoRefresh(userId, username, tenantSchema, refreshToken);
+            case "TENANT" -> processTenantRefresh(userId, username, tenantSchema, refreshToken);
             default -> throw new InvalidTokenException("Unknown user type in refresh token");
         };
     }
 
-    private AuthResponse processRootRefresh(Long userId, String username) {
+    private AuthResponse processRootRefresh(Long userId, String username, String existingRefreshToken) {
         RootUser rootUser = rootUserRepository.findById(userId)
                 .orElseThrow(() -> new InvalidTokenException("User no longer exists"));
 
@@ -68,21 +71,19 @@ public class RefreshTokenService {
         claims.put("userId", rootUser.getId());
         claims.put("role", rootUser.getRole().name());
 
-        Map<String, Object> refreshClaims = new HashMap<>();
-        refreshClaims.put("userType", "ROOT");
-        refreshClaims.put("userId", rootUser.getId());
-
         return buildAuthResponse(
                 jwtService.generateAccessToken(claims, rootUser.getUsername()),
-                jwtService.generateRefreshToken(refreshClaims, rootUser.getUsername()),
+                existingRefreshToken,
                 "ROOT",
                 rootUser.getUsername(),
                 rootUser.getId(),
                 rootUser.getRole().name(),
-                null);
+                "public",
+                null
+        );
     }
 
-    private AuthResponse processCeoRefresh(Long userId, String username, String tenantSchema) {
+    private AuthResponse processCeoRefresh(Long userId, String username, String tenantSchema, String existingRefreshToken) {
         GlobalUser ceoUser = globalUserRepository.findById(userId)
                 .orElseThrow(() -> new InvalidTokenException("User no longer exists"));
 
@@ -90,31 +91,41 @@ public class RefreshTokenService {
             throw new InvalidTokenException("User is inactive or token is invalid");
         }
 
+        boolean hasSchema = Boolean.TRUE.equals(ceoUser.getHasSchema());
+        String tenant = hasSchema ? ceoUser.getTargetSchema() : null;
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("userType", "CEO");
         claims.put("userId", ceoUser.getId());
-        claims.put("role", "CEO");
-        claims.put("tenantSchema", ceoUser.getTargetSchema());
-
-        Map<String, Object> refreshClaims = new HashMap<>();
-        refreshClaims.put("userType", "CEO");
-        refreshClaims.put("userId", ceoUser.getId());
-        refreshClaims.put("tenantSchema", ceoUser.getTargetSchema());
+        claims.put("role", ceoUser.getSystemRole());          // always CEO
+        claims.put("tenantSchema", tenant); // tenant owned by CEO
+        claims.put("hasSchema", hasSchema);
 
         ceoUser.setLastLoginAt(Instant.now());
         globalUserRepository.save(ceoUser);
 
+        List<AuthResponse.PermissionModuleDto> permissions = null;
+        if (hasSchema && tenantSchema != null && !tenantSchema.isBlank()) {
+            permissions = permissionQueryService.getGroupedPermissions(
+                    ceoUser.getId(),
+                    ceoUser.getUsername(),
+                    tenantSchema
+            );
+        }
+
         return buildAuthResponse(
                 jwtService.generateAccessToken(claims, ceoUser.getUsername()),
-                jwtService.generateRefreshToken(refreshClaims, ceoUser.getUsername()),
+                existingRefreshToken,
                 "CEO",
                 ceoUser.getUsername(),
                 ceoUser.getId(),
                 ceoUser.getSystemRole(),
-                ceoUser.getTargetSchema());
+                tenant,
+                permissions
+        );
     }
 
-    private AuthResponse processTenantRefresh(Long userId, String username, String tenantSchema) {
+    private AuthResponse processTenantRefresh(Long userId, String username, String tenantSchema, String existingRefreshToken) {
         if (tenantSchema == null) {
             throw new InvalidTokenException("Tenant schema missing in refresh token");
         }
@@ -133,32 +144,37 @@ public class RefreshTokenService {
             Map<String, Object> claims = new HashMap<>();
             claims.put("userType", "TENANT");
             claims.put("userId", tenantUser.getId());
+            claims.put("roleId", tenantUser.getRole().getId());
             claims.put("role", tenantUser.getRole().getName());
             claims.put("tenantSchema", tenantSchema);
-
-            Map<String, Object> refreshClaims = new HashMap<>();
-            refreshClaims.put("userType", "TENANT");
-            refreshClaims.put("userId", tenantUser.getId());
-            refreshClaims.put("tenantSchema", tenantSchema);
 
             tenantUser.setLastLoginAt(Instant.now());
             userRepository.save(tenantUser);
 
+            List<AuthResponse.PermissionModuleDto> permissions =
+                    permissionQueryService.getGroupedPermissions(
+                            tenantUser.getId(),
+                            tenantUser.getUsername(),
+                            tenantSchema
+                    );
+
             return buildAuthResponse(
                     jwtService.generateAccessToken(claims, tenantUser.getUsername()),
-                    jwtService.generateRefreshToken(refreshClaims, tenantUser.getUsername()),
+                    existingRefreshToken,
                     "TENANT",
                     tenantUser.getUsername(),
                     tenantUser.getId(),
                     tenantUser.getRole().getName(),
-                    tenantSchema);
+                    tenantSchema,
+                    permissions
+            );
         } finally {
             TenantContext.clear();
         }
     }
 
     private AuthResponse buildAuthResponse(String accessToken, String refreshToken, String userType,
-            String username, Long userId, String role, String tenantSchema) {
+                                           String username, Long userId, String role, String tenantSchema, List<AuthResponse.PermissionModuleDto> permissions) {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)

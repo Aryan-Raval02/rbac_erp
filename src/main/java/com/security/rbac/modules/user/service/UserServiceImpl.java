@@ -9,6 +9,7 @@ import com.security.rbac.modules.module.repo.ModuleRepository;
 import com.security.rbac.modules.role.entity.Role;
 import com.security.rbac.modules.role.exception.RoleNotFoundException;
 import com.security.rbac.modules.role.repo.RoleRepository;
+import com.security.rbac.modules.user.dto.UserMapper;
 import com.security.rbac.modules.user.dto.request.CreateUserRequest;
 import com.security.rbac.modules.user.dto.response.UserResponse;
 import com.security.rbac.modules.user.entity.User;
@@ -38,6 +39,7 @@ public class UserServiceImpl implements UserService {
         private final ActionRepository actionRepository;
         private final UserPermissionRepository userPermissionRepository;
         private final PasswordEncoder passwordEncoder;
+        private final UserMapper userMapper;
 
         @Override
         @Transactional
@@ -70,37 +72,11 @@ public class UserServiceImpl implements UserService {
                                                                         + request.reportingManagerId()));
                 }
 
-                // Persist user
-                User user = User.builder()
-                                .empId(request.empId())
-                                .firstName(request.firstName())
-                                .lastName(request.lastName())
-                                .email(request.email())
-                                .username(request.username())
-                                .passwordHash(passwordEncoder.encode(request.password()))
-                                .contactNumber(request.contactNumber())
-                                .alternateNumber(request.alternateNumber())
-                                .department(request.department())
-                                .designation(request.designation())
-                                .role(role)
-                                .reportingManager(reportingManager)
-                                .employmentType(request.employmentType())
-                                .dateOfJoining(request.dateOfJoining())
-                                .status(request.status() != null ? request.status() : "ACTIVE")
-                                .isActive(true)
-                                .currentAddressLine1(request.currentAddressLine1())
-                                .currentAddressLine2(request.currentAddressLine2())
-                                .currentCity(request.currentCity())
-                                .currentState(request.currentState())
-                                .currentCountry(request.currentCountry())
-                                .currentPincode(request.currentPincode())
-                                .permanentAddressLine1(request.permanentAddressLine1())
-                                .permanentAddressLine2(request.permanentAddressLine2())
-                                .permanentCity(request.permanentCity())
-                                .permanentState(request.permanentState())
-                                .permanentCountry(request.permanentCountry())
-                                .permanentPincode(request.permanentPincode())
-                                .build();
+                User user = userMapper.toEntity(request);
+
+                user.setPasswordHash(passwordEncoder.encode(request.password()));
+                user.setRole(role);
+                user.setReportingManager(reportingManager);
 
                 User saved = userRepository.save(user);
                 log.info("User created — id={}, email='{}', role='{}'", saved.getId(), saved.getEmail(),
@@ -156,36 +132,6 @@ public class UserServiceImpl implements UserService {
         }
 
         private UserResponse toResponse(User u) {
-                return new UserResponse(
-                                u.getId(),
-                                u.getEmpId(),
-                                u.getFirstName(),
-                                u.getLastName(),
-                                u.getEmail(),
-                                u.getUsername(),
-                                u.getContactNumber(),
-                                u.getAlternateNumber(),
-                                u.getDepartment(),
-                                u.getDesignation(),
-                                u.getRole().getId(),
-                                u.getRole().getName(),
-                                u.getReportingManager() != null ? u.getReportingManager().getId() : null,
-                                u.getEmploymentType(),
-                                u.getDateOfJoining(),
-                                u.getStatus(),
-                                u.getIsActive(),
-                                u.getCurrentAddressLine1(),
-                                u.getCurrentAddressLine2(),
-                                u.getCurrentCity(),
-                                u.getCurrentState(),
-                                u.getCurrentCountry(),
-                                u.getCurrentPincode(),
-                                u.getPermanentAddressLine1(),
-                                u.getPermanentAddressLine2(),
-                                u.getPermanentCity(),
-                                u.getPermanentState(),
-                                u.getPermanentCountry(),
-                                u.getPermanentPincode(),
-                                u.getCreatedAt());
+                return userMapper.toResponse(u);
         }
 }
