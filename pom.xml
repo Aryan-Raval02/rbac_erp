@@ -139,6 +139,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>rbac</finalName>
 		<plugins>
 
 			<!-- ── Lombok annotation processing fix ────────────────────────────

@@ -1,0 +1,152 @@
+----------------------------------------------------------------------------------
+
+Here is the full practical baseline from 1 GB, 2 GB, 4 GB, and 8 GB RAM.
+
+These are starting production values for the application server only, assuming PostgreSQL is separate.
+
+----------------------------------------------------------------------------------
+
+1 GB RAM
+server:
+  tomcat:
+    threads:
+      max: 50
+    accept-count: 25
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+JVM:
+
+-Xms384m -Xmx512m -XX:+UseG1GC
+
+Use for:
+
+development
+
+testing
+
+demo only
+
+----------------------------------------------------------------------------------
+
+2 GB RAM
+server:
+  tomcat:
+    threads:
+      max: 100
+    accept-count: 50
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+JVM:
+
+-Xms768m -Xmx1024m -XX:+UseG1GC
+
+Use for:
+
+small MVP
+
+low traffic production
+
+----------------------------------------------------------------------------------
+
+4 GB RAM
+server:
+  tomcat:
+    threads:
+      max: 200
+    accept-count: 100
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+JVM:
+
+-Xms1536m -Xmx2048m -XX:+UseG1GC
+
+Use for:
+
+medium production
+
+real ERP usage
+
+----------------------------------------------------------------------------------
+
+8 GB RAM
+server:
+  tomcat:
+    threads:
+      max: 250
+    accept-count: 150
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 40
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+JVM:
+
+-Xms3g -Xmx3g -XX:+UseG1GC
+
+For heavier traffic, after load test, you may move to:
+
+server:
+  tomcat:
+    threads:
+      max: 300
+-Xms4g -Xmx4g -XX:+UseG1GC
+
+But not as first default.
+
+----------------------------------------------------------------------------------
+
+Final comparison table
+RAM	Tomcat Threads	Accept Count	Hikari Max Pool	Hikari Min Idle	JVM Heap
+1 GB	50	25	8	2	384m–512m
+2 GB	100	50	15	5	768m–1g
+4 GB	200	100	30	10	1.5g–2g
+8 GB	250	150	40	10	3g
+
+----------------------------------------------------------------------------------
+
+Important note
+
+If application and PostgreSQL are on the same machine, reduce these values, especially for:
+
+Hikari max pool
+
+JVM heap
+
+Tomcat threads
+
+----------------------------------------------------------------------------------
+
+Because DB also needs RAM and CPU.
+
+For your ERP, 4 GB is a good minimum and 8 GB is a strong starting production size.
+
+----------------------------------------------------------------------------------

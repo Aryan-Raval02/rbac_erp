@@ -10,12 +10,18 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 30
+      minimum-idle: 10
       # MUST be false for Hibernate multi-tenancy schema-switching
       auto-commit: false
       connection-test-query: SELECT 1
       validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  threads:
+    virtual:
+      enabled: true
 
   # ─────────────────────────────────────────────────────
   # Flyway — disabled here because we declare an explicit
@@ -46,6 +52,15 @@ spring:
         connection.provider_disables_autocommit: true
         connection.isolation: 2    # TRANSACTION_READ_COMMITTED
 #        default_schema: public
+
+
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    threads:
+      max: 200
+    accept-count: 100
+
 
 # ─────────────────────────────────────────────────────
 # Logging
