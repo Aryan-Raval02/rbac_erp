@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.roles (
 CREATE TABLE IF NOT EXISTS public.modules (
     id          BIGSERIAL    PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
+    label       VARCHAR(255),
     description VARCHAR(255)
 );
 
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.modules (
 CREATE TABLE IF NOT EXISTS public.actions (
     id          BIGSERIAL    PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,   -- READ, WRITE, DELETE, EXECUTE …
+    label       VARCHAR(255),
     description VARCHAR(255)
 );
 
@@ -71,23 +73,23 @@ VALUES
     ('OPERATION_HEAD', 'Controls operational workflow')
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO public.modules (name, description)
+INSERT INTO public.modules (name, label, description)
 VALUES
-    ('BRANCH_MANAGEMENT', 'Manage branches and branch configuration'),
-    ('USER_MANAGEMENT', 'Manage users and user access'),
-    ('ROLE_MANAGEMENT', 'Manage roles and permissions'),
-    ('PRODUCT_MANAGEMENT', 'Manage products and inventory items'),
-    ('TAX_MANAGEMENT', 'Manage tax rules and tax configuration')
+    ('BRANCH_MANAGEMENT', 'Branch Management', 'Manage branches and branch configuration'),
+    ('USER_MANAGEMENT', 'User Management', 'Manage users and user access'),
+    ('ROLE_MANAGEMENT', 'Role Management', 'Manage roles and permissions'),
+    ('PRODUCT_MANAGEMENT', 'Product Management', 'Manage products and inventory items'),
+    ('TAX_MANAGEMENT', 'Tax Management', 'Manage tax rules and tax configuration')
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO public.actions (name, description)
+INSERT INTO public.actions (name, label, description)
 VALUES
-    ('READ', 'Read resource'),
-    ('ADD', 'Create new resource'),
-    ('EDIT', 'Modify existing resource'),
-    ('DELETE', 'Delete resource'),
-    ('APPROVE', 'Approve business operation'),
-    ('REQUEST', 'Submit request for approval'),
-    ('EXPORT', 'Export data'),
-    ('DOWNLOAD', 'Download files or reports')
+    ('READ', 'Read', 'Read resource'),
+    ('ADD', 'Add', 'Create new resource'),
+    ('EDIT', 'Edit', 'Modify existing resource'),
+    ('DELETE', 'Delete', 'Delete resource'),
+    ('APPROVE', 'Approve', 'Approve business operation'),
+    ('REQUEST', 'Request', 'Submit request for approval'),
+    ('EXPORT', 'Export', 'Export data'),
+    ('DOWNLOAD', 'Download', 'Download files or reports')
 ON CONFLICT (name) DO NOTHING;

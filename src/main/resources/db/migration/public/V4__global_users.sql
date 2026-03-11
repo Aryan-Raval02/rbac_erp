@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.global_users (
     -- This tells the app which schema to load for this user.
     -- If a user can belong to multiple tenants, move this to a 'memberships' table.
     target_schema   VARCHAR(63),
+    has_schema      BOOLEAN NOT NULL DEFAULT FALSE,
 
     -- System Role (To distinguish Your Staff vs. Customers)
     system_role     VARCHAR(50) DEFAULT 'CEO', -- e.g., 'SUPER_ADMIN', 'CUSTOMER'

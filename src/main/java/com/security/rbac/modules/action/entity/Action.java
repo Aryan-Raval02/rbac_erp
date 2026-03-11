@@ -26,5 +26,8 @@ public class Action {
     private String name;
 
     @Column(length = 255)
+    private String label;
+
+    @Column(length = 255)
     private String description;
 }

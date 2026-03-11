@@ -8,6 +8,7 @@ import com.security.rbac.utility.ResponseStructure;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -50,6 +51,7 @@ public class RolePermissionController {
      * Duplicate entries are silently skipped (idempotent).
      */
     @PostMapping
+    @PreAuthorize("hasRole('SERAVION')")
     public ResponseEntity<ResponseStructure<RolePermissionResponse>> assignPermissions(
             @Valid @RequestBody AssignRolePermissionRequest request) {
 

@@ -1,6 +1,6 @@
 package com.security.rbac.modules.auth.service;
 
-import com.security.rbac.exception.InvalidTokenException;
+import com.security.rbac.jwt.exception.InvalidTokenException;
 import com.security.rbac.jwt.JwtService;
 import com.security.rbac.modules.auth.dto.response.AuthResponse;
 import com.security.rbac.modules.ceo.entity.GlobalUser;

@@ -12,14 +12,14 @@ FROM public.roles
 ON CONFLICT (name) DO NOTHING; -- Safety check
 
 -- 2. Copy MODULES
-INSERT INTO modules (id, name, description)
-SELECT id, name, description
+INSERT INTO modules (id, name, label, description)
+SELECT id, name, label, description
 FROM public.modules
 ON CONFLICT (name) DO NOTHING;
 
 -- 3. Copy ACTIONS
-INSERT INTO actions (id, name, description)
-SELECT id, name, description
+INSERT INTO actions (id, name, label, description)
+SELECT id, name, label, description
 FROM public.actions
 ON CONFLICT (name) DO NOTHING;
 

@@ -1,5 +1,6 @@
-package com.security.rbac.exception;
+package com.security.rbac.jwt.exception;
 
+import com.security.rbac.exception.ApiBaseException;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -8,6 +9,6 @@ import org.springframework.http.HttpStatus;
  */
 public class UnauthorizedException extends ApiBaseException {
     public UnauthorizedException(String message) {
-        super(message, HttpStatus.FORBIDDEN);
+        super(message, HttpStatus.UNAUTHORIZED);
     }
 }

@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -22,8 +21,8 @@ import java.util.Set;
 import com.security.rbac.modules.auth.service.AuthorityLoaderService;
 import com.security.rbac.modules.auth.service.TokenBlacklistService;
 import org.springframework.web.servlet.HandlerExceptionResolver;
-import com.security.rbac.exception.InvalidTokenException;
-import com.security.rbac.exception.TenantMismatchException;
+import com.security.rbac.jwt.exception.InvalidTokenException;
+import com.security.rbac.multitenancy.exception.TenantMismatchException;
 import io.jsonwebtoken.JwtException;
 
 @Slf4j

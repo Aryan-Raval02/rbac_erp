@@ -16,13 +16,27 @@ import java.util.Optional;
 @Repository
 public interface UserPermissionRepository extends JpaRepository<UserPermission, Long> {
 
-    /** All permission overrides for a specific user. */
+    /**
+     * All permission overrides for a specific user.
+     */
     List<UserPermission> findByUserId(Long userId);
 
-    /** Only the allowed=true overrides for a user (for authorization checks). */
-    List<UserPermission> findByUserIdAndAllowedTrue(Long userId);
+    /**
+     * Only the allowed=true overrides for a user (for authorization checks).
+     */
+    @Query("""
+                select up
+                from UserPermission up
+                join fetch up.module m
+                join fetch up.action a
+                where up.user.id = :userId
+                  and up.allowed = true
+            """)
+    List<UserPermission> findByUserIdAndAllowedTrue(@Param("userId") Long userId);
 
-    /** Exact lookup — used as a duplicate guard before inserting. */
+    /**
+     * Exact lookup — used as a duplicate guard before inserting.
+     */
     Optional<UserPermission> findByUserIdAndModuleIdAndActionId(
             Long userId, Long moduleId, Long actionId);
 
@@ -43,6 +57,8 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             @Param("moduleId") Long moduleId,
             @Param("actionId") Long actionId);
 
-    /** Remove all overrides for a user — called when a user is deleted. */
+    /**
+     * Remove all overrides for a user — called when a user is deleted.
+     */
     void deleteByUserId(Long userId);
 }
