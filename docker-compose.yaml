@@ -1,0 +1,40 @@
+services:
+  app:
+    build: .
+    container_name: rbac-erp-app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rbac-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: rbac-erp-db
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rbac-network
+    restart: unless-stopped
+
+networks:
+  rbac-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,11 +1,9 @@
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!target/*.jar
-*~
-*.md
-.git/
-.gitignore
-.idea/
-*.log
+.git
+.idea
 *.iml
+*.log
 .env
+*.md
+Dockerfile*
+docker-compose*.yml
